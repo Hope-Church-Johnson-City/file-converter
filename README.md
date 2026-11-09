@@ -53,6 +53,8 @@ macOS's own `afconvert`; images and PDFs through ImageIO and Core Graphics.
 The build is signed with the Hope Church Developer ID when that certificate is
 in the keychain, and ad hoc otherwise (fine on the Mac that built it).
 
+`scripts/make-icon.swift` redraws `Resources/AppIcon.icns`.
+
 ## Releasing
 
 1. Bump `CFBundleShortVersionString` and `CFBundleVersion` in
@@ -71,8 +73,6 @@ Notarizing uses the App Store Connect key Hope Church for Mac uses
 LAME and mpg123 are LGPL. The app carries unmodified copies of the Homebrew
 builds, with their licenses in `Contents/Resources/Licenses`; their source is at
 lame.sourceforge.io and mpg123.de.
-
-`scripts/make-icon.swift` redraws `Resources/AppIcon.icns`.
 
 ## Code
 
