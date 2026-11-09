@@ -9,7 +9,8 @@ struct FileConverterApp: App {
         Window("File Converter", id: "main") {
             ContentView(model: .shared)
         }
-        .defaultSize(width: 560, height: 560)
+        .windowStyle(.hiddenTitleBar)
+        .defaultSize(width: 600, height: 680)
         .commands {
             CommandGroup(replacing: .newItem) {
                 Button("Choose Files…") { ContentView.chooseFiles(model: .shared) }

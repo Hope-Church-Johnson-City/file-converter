@@ -61,6 +61,9 @@ struct Job: Identifiable {
     let input: URL
     let output: URL
     var state: State = .waiting
+    var inputBytes: Int64 = 0
+    /// Set once the file is converted; a multi-page PDF counts all its pages.
+    var outputBytes: Int64?
 
     /// What the row shows as the result: for a multi-page PDF, the page files.
     var outputLabel: String {
@@ -114,6 +117,16 @@ final class ConverterModel: ObservableObject {
         return formats.isEmpty ? OutputFormat.allCases : formats
     }
 
+    /// Files in this item that the chosen format would convert.
+    func convertible(_ item: DroppedItem) -> [URL] {
+        item.files.filter { fileKind(of: $0).map(format.accepts) == true && !format.matches($0) }
+    }
+
+    var convertibleCount: Int { items.reduce(0) { $0 + convertible($1).count } }
+
+    var bytesBefore: Int64 { jobs.filter { $0.outputBytes != nil }.reduce(0) { $0 + $1.inputBytes } }
+    var bytesAfter: Int64 { jobs.reduce(0) { $0 + ($1.outputBytes ?? 0) } }
+
     var doneCount: Int { jobs.filter { $0.state != .waiting && $0.state != .working }.count }
     var failedCount: Int { jobs.filter { if case .failed = $0.state { true } else { false } }.count }
     var skippedCount: Int { jobs.filter { $0.state == .skipped }.count }
@@ -165,7 +178,7 @@ final class ConverterModel: ObservableObject {
 
         // Folders: everything inside goes to a new folder within it, named for the format.
         for item in items where item.isFolder {
-            let files = item.files.filter { fileKind(of: $0).map(format.accepts) == true && !format.matches($0) }
+            let files = convertible(item)
             guard !files.isEmpty else { continue }
             let folder = item.url.appendingPathComponent(format.folderName, isDirectory: true)
             results.append(folder)
@@ -176,8 +189,7 @@ final class ConverterModel: ObservableObject {
         }
 
         // Single files: ask where to save, with the name ready to change.
-        let loose = items.filter { !$0.isFolder }.map(\.url)
-            .filter { fileKind(of: $0).map(format.accepts) == true && !format.matches($0) }
+        let loose = items.filter { !$0.isFolder }.flatMap(convertible)
         if loose.count == 1 {
             guard let output = askSaveLocation(for: loose[0], format: format) else { return }
             plan.append(Job(input: loose[0], output: output))
@@ -197,6 +209,9 @@ final class ConverterModel: ObservableObject {
             return
         }
 
+        for index in plan.indices {
+            plan[index].inputBytes = fileSize(plan[index].input)
+        }
         jobs = plan
         self.results = results
         notice = nil
@@ -205,8 +220,7 @@ final class ConverterModel: ObservableObject {
     }
 
     private func firstOutputs(input: URL, output: URL) -> [URL] {
-        guard fileKind(of: input) == .pdf else { return [output] }
-        return Engine.pdfPageURLs(base: output, pageCount: Engine.pdfPageCount(input))
+        Engine.outputURLs(input: input, output: output)
     }
 
     private func run(format: OutputFormat, bitrate: Int) {
@@ -221,22 +235,25 @@ final class ConverterModel: ObservableObject {
             queue.addOperation { [weak self] in
                 Task { @MainActor in self?.update(id, .working) }
                 let state: Job.State
+                var bytes: Int64?
                 do {
                     try Engine.convert(job.input, to: job.output, format: format, mp3Bitrate: bitrate)
                     state = .done
+                    bytes = Engine.outputURLs(input: job.input, output: job.output).reduce(0) { $0 + fileSize($1) }
                 } catch {
                     state = .failed(error.localizedDescription)
                 }
-                Task { @MainActor in self?.update(id, state) }
+                Task { @MainActor in self?.update(id, state, outputBytes: bytes) }
             }
         }
     }
 
-    private func update(_ id: UUID, _ state: Job.State) {
+    private func update(_ id: UUID, _ state: Job.State, outputBytes: Int64? = nil) {
         guard let index = jobs.firstIndex(where: { $0.id == id }) else { return }
         // A late "working" must not overwrite a result that already arrived.
         if state == .working && jobs[index].state != .waiting { return }
         jobs[index].state = state
+        jobs[index].outputBytes = outputBytes
         if phase == .running && doneCount == jobs.count { finish() }
     }
 
@@ -290,4 +307,8 @@ final class ConverterModel: ObservableObject {
         panel.directoryURL = near.deletingLastPathComponent()
         return panel.runModal() == .OK ? panel.url : nil
     }
+}
+
+func fileSize(_ url: URL) -> Int64 {
+    Int64((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
 }

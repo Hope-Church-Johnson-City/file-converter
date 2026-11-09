@@ -158,6 +158,12 @@ enum Engine {
         }
     }
 
+    /// Every file a conversion writes: the pages of a PDF, otherwise just the output.
+    static func outputURLs(input: URL, output: URL) -> [URL] {
+        guard fileKind(of: input) == .pdf else { return [output] }
+        return pdfPageURLs(base: output, pageCount: pdfPageCount(input))
+    }
+
     static func pdfPageCount(_ url: URL) -> Int {
         CGPDFDocument(url as CFURL)?.numberOfPages ?? 0
     }

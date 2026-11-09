@@ -35,6 +35,27 @@ enum OutputFormat: String, CaseIterable, Identifiable {
         }
     }
 
+    /// The tile's one-line description.
+    var caption: String {
+        switch self {
+        case .mp3: return "Small, plays anywhere"
+        case .m4a: return "Small, AAC"
+        case .wav: return "Full quality"
+        case .aiff: return "Full quality"
+        case .jpg: return "Small, for sharing"
+        case .png: return "Sharp, larger files"
+        }
+    }
+
+    var symbol: String {
+        switch self {
+        case .mp3, .m4a: return "music.note"
+        case .wav, .aiff: return "waveform"
+        case .jpg: return "photo"
+        case .png: return "photo.on.rectangle"
+        }
+    }
+
     var fileExtension: String { rawValue }
 
     /// The folder made inside a dropped folder, e.g. "MP3s".
@@ -78,11 +99,5 @@ enum MP3Quality: Int, CaseIterable, Identifiable {
 
     var id: Int { rawValue }
 
-    var title: String {
-        switch self {
-        case .k320: return "320 kbps (best)"
-        case .k256: return "256 kbps"
-        case .k192: return "192 kbps (smallest)"
-        }
-    }
+    var title: String { "\(rawValue) kbps" }
 }
