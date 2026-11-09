@@ -32,6 +32,11 @@ background where the original was transparent.
 
 Several files convert at once, one per processor core.
 
+## Getting it
+
+Staff download it from **Downloads** in the CMS (dashboard.hopejc.org/downloads).
+The CMS copies each new GitHub release of this repo there within 15 minutes.
+
 ## Building
 
 Needs Xcode and `brew install lame`.
@@ -45,8 +50,27 @@ The build copies LAME (the MP3 encoder) and the one Homebrew library it links
 into the app, so the app itself doesn't need Homebrew. Other audio goes through
 macOS's own `afconvert`; images and PDFs through ImageIO and Core Graphics.
 
-The app is signed ad hoc, which is fine on the Mac that built it. To hand it to
-someone else it would need a Developer ID signature and notarization.
+The build is signed with the Hope Church Developer ID when that certificate is
+in the keychain, and ad hoc otherwise (fine on the Mac that built it).
+
+## Releasing
+
+1. Bump `CFBundleShortVersionString` and `CFBundleVersion` in
+   `Resources/Info.plist` and commit.
+2. `./scripts/release.sh --publish` builds the app, notarizes it, makes
+   `dist/File-Converter-<version>.dmg` (signed, notarized, stapled) and creates
+   the GitHub release `v<version>` with it.
+3. The CMS picks it up within 15 minutes, or press **Check now** on the File
+   Converter card in Downloads.
+
+Notarizing uses the App Store Connect key Hope Church for Mac uses
+(`~/.appstoreconnect/private_keys/AuthKey_SN9Q4M95MW.p8`).
+
+## Licenses
+
+LAME and mpg123 are LGPL. The app carries unmodified copies of the Homebrew
+builds, with their licenses in `Contents/Resources/Licenses`; their source is at
+lame.sourceforge.io and mpg123.de.
 
 `scripts/make-icon.swift` redraws `Resources/AppIcon.icns`.
 
